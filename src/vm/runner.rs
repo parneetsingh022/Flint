@@ -28,7 +28,7 @@ impl VirtualMachine{
     pub fn fetch(&mut self) -> u8 {
         let instruction = self.code[self.ip];
 
-        self.ip += 1;
+        //self.ip += 1;
     
         instruction
     }
