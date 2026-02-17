@@ -1,3 +1,5 @@
+use crate::vm::opcodes::op;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Value{
     Int(i32),
@@ -41,6 +43,42 @@ impl VirtualMachine{
     /// Removes and returns item from stack
     pub fn pop(&mut self) -> Value{
         self.stack.pop().expect("Stack underflow!")
+    }
+
+    /// Executes the virtual machine
+    pub fn execute(&mut self){
+        let mut cur_op : u8;
+        while (self.ip < self.code.len()){
+            cur_op = self.fetch();
+
+            match cur_op {
+                op::NOP => continue,
+                op::HALT => break,
+                op::IPUSH => {
+                    let start = self.ip;
+                    let end = self.ip + 4;
+                    let bytes = &self.code[start..end];
+
+                    // Convert bytes to i32 (using Big Endian)
+                    let value = i32::from_be_bytes(bytes.try_into().expect("Bytecode ended prematurely"));
+
+                    // Move the IP forward by 4
+                    self.ip += 4;
+
+                    self.push(Value::Int(value));
+                }
+                
+                op::IPOP => {
+                    self.pop();
+                }
+
+                op::BIPUSH => {
+                    let data = self.fetch() as i32;
+                    self.push(Value::Int(data));
+                }
+                _ => panic!("Unknown opcode: {}", cur_op),
+            }
+        }
     }
 }
 
