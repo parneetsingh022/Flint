@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Value{
     Int(i32),
     Float(f64)
@@ -31,6 +31,16 @@ impl VirtualMachine{
         self.ip += 1;
     
         instruction
+    }
+
+    /// Add an item in the stack
+    pub fn push(&mut self, value : Value) {
+        self.stack.push(value);
+    }
+    
+    /// Removes and returns item from stack
+    pub fn pop(&mut self) -> Value{
+        self.stack.pop().expect("Stack underflow!")
     }
 }
 
@@ -70,5 +80,29 @@ mod tests {
         let mut vm = VirtualMachine::new(vec![1]);
         vm.fetch(); // IP is now 1
         vm.fetch(); // This should panic because index 1 doesn't exist
+    }
+
+    #[test]
+    fn test_stack_push_pop_integrity(){
+        let mut vm = VirtualMachine::new(vec![]);
+        assert_eq!(vm.stack, vec![]);
+        vm.push(Value::Int(10));
+        vm.push(Value::Int(20));
+        vm.push(Value::Float(43.2));
+        assert_eq!(vm.stack, vec![Value::Int(10), Value::Int(20), Value::Float(43.2)]);
+        assert_eq!(vm.pop(), Value::Float(43.2));
+        assert_eq!(vm.pop(), Value::Int(20));
+        vm.push(Value::Float(56.23));
+        assert_eq!(vm.pop(), Value::Float(56.23));
+        assert_eq!(vm.pop(), Value::Int(10));
+        assert!(vm.stack.is_empty(), "Stack should be empty after all pops");
+    }
+
+    #[test]
+    #[should_panic(expected = "Stack underflow!")]
+    fn test_stack_underflow_panics() {
+        let mut vm = VirtualMachine::new(vec![]);
+        
+        vm.pop();
     }
 }
