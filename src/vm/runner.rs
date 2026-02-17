@@ -57,6 +57,8 @@ impl VirtualMachine{
                 op::IPUSH => self.handle_ipush(),
                 op::IPOP => self.handle_ipop(),
                 op::BIPUSH => self.handle_bipush(),
+                op::SWP => self.handle_swp(),
+                op::DUP => self.handle_dup(),
                 _ => panic!("Unknown opcode: {}", cur_op),
             }
         }
@@ -84,6 +86,18 @@ impl VirtualMachine{
     pub fn handle_bipush(&mut self){
         let data = self.fetch() as i32;
         self.push(Value::Int(data));
+    }
+    pub fn handle_swp(&mut self){
+        let a = self.pop();
+        let b = self.pop();
+        self.push(a);
+        self.push(b);
+    }
+
+    pub fn handle_dup(&mut self){
+        let a = self.pop();
+        self.push(a);
+        self.push(a);
     }
 }
 
