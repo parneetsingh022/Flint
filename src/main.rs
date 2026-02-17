@@ -1,3 +1,7 @@
+mod vm;
+
+use crate::vm::opcodes::op_codes;
+
 fn main() {
-    println!("Hello, world!");
+    println!("IPUSH {}", op_codes::IPUSH);
 }
