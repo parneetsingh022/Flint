@@ -113,8 +113,29 @@ mod test_opcode_basics {
     }
 
     #[test]
+    fn test_add_neg_integers() {
+        let code = bytecode!(
+            BIPUSH 10,
+            NEG,
+            BIPUSH 20,
+            ADD,
+            BIPUSH 40,
+            NEG,
+            BIPUSH 10,
+            ADD,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        
+        vm.execute();
+
+        assert_eq!(vm.stack.len(), 2);
+        assert_eq!(vm.stack[0], Value::Int(10));
+        assert_eq!(vm.stack[1], Value::Int(-30));
+    }
+
+    #[test]
     fn test_add_integers() {
-        // Pushes 10 and 20, then adds them
         let code = bytecode!(
             BIPUSH 10,
             BIPUSH 20,
@@ -125,8 +146,8 @@ mod test_opcode_basics {
         
         vm.execute();
 
-        // The stack should contain exactly one value: 30
         assert_eq!(vm.stack.len(), 1);
         assert_eq!(vm.stack[0], Value::Int(30));
     }
+
 }
