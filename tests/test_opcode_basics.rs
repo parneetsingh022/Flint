@@ -111,4 +111,43 @@ mod test_opcode_basics {
 
         assert_eq!(vm.stack, vec![Value::Int(42), Value::Int(42)]);
     }
+
+    #[test]
+    fn test_add_neg_integers() {
+        let code = bytecode!(
+            BIPUSH 10,
+            NEG,
+            BIPUSH 20,
+            ADD,
+            BIPUSH 40,
+            NEG,
+            BIPUSH 10,
+            ADD,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        
+        vm.execute();
+
+        assert_eq!(vm.stack.len(), 2);
+        assert_eq!(vm.stack[0], Value::Int(10));
+        assert_eq!(vm.stack[1], Value::Int(-30));
+    }
+
+    #[test]
+    fn test_add_integers() {
+        let code = bytecode!(
+            BIPUSH 10,
+            BIPUSH 20,
+            ADD,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        
+        vm.execute();
+
+        assert_eq!(vm.stack.len(), 1);
+        assert_eq!(vm.stack[0], Value::Int(30));
+    }
+
 }
