@@ -10,7 +10,7 @@ fn main() {
         BIPUSH 34,
         IPUSH 394,
         NOP,
-        ADD,
+        ADD
     );
 
     
