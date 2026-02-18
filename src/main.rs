@@ -2,18 +2,20 @@ mod vm;
 
 use crate::vm::opcodes::op;
 use crate::vm::runner::VirtualMachine;
+use crate::vm::disassembler::disassemble_bytecode;
 
 fn main() {
     let code = bytecode!(
-        BIPUSH 20,
-        NEG,
-        BIPUSH 10,
-        ADD,
-        HALT
+        IPUSH 100,
+        BIPUSH 34,
+        IPUSH 394,
+        NOP,
+        ADD
     );
-    let mut vm = VirtualMachine::new(code);
 
-    vm.execute();
-    println!("{:?}", vm.stack);
+    
+    let dis = disassemble_bytecode(code);
+    println!("{}",dis);
+
     
 }
