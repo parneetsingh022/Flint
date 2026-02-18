@@ -54,31 +54,50 @@ impl VirtualMachine{
             match cur_op {
                 op::NOP => continue,
                 op::HALT => break,
-                op::IPUSH => {
-                    let start = self.ip;
-                    let end = self.ip + 4;
-                    let bytes = &self.code[start..end];
-
-                    // Convert bytes to i32 (using Big Endian)
-                    let value = i32::from_be_bytes(bytes.try_into().expect("Bytecode ended prematurely"));
-
-                    // Move the IP forward by 4
-                    self.ip += 4;
-
-                    self.push(Value::Int(value));
-                }
-                
-                op::IPOP => {
-                    self.pop();
-                }
-
-                op::BIPUSH => {
-                    let data = self.fetch() as i32;
-                    self.push(Value::Int(data));
-                }
+                op::IPUSH => self.handle_ipush(),
+                op::IPOP => self.handle_ipop(),
+                op::BIPUSH => self.handle_bipush(),
+                op::SWP => self.handle_swp(),
+                op::DUP => self.handle_dup(),
                 _ => panic!("Unknown opcode: {}", cur_op),
             }
         }
+    }
+
+
+    pub fn handle_ipush(&mut self){
+        let start = self.ip;
+        let end = self.ip + 4;
+        let bytes = &self.code[start..end];
+
+        // Convert bytes to i32 (using Big Endian)
+        let value = i32::from_be_bytes(bytes.try_into().expect("Bytecode ended prematurely"));
+
+        // Move the IP forward by 4
+        self.ip += 4;
+
+        self.push(Value::Int(value));
+    }
+
+    pub fn handle_ipop(&mut self){
+        self.pop();
+    }
+
+    pub fn handle_bipush(&mut self){
+        let data = self.fetch() as i32;
+        self.push(Value::Int(data));
+    }
+    pub fn handle_swp(&mut self){
+        let a = self.pop();
+        let b = self.pop();
+        self.push(a);
+        self.push(b);
+    }
+
+    pub fn handle_dup(&mut self){
+        let a = self.pop();
+        self.push(a);
+        self.push(a);
     }
 }
 

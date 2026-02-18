@@ -8,6 +8,7 @@ fn main() {
         op::NOP, 
         op::BIPUSH, 0x0a,
         op::BIPUSH, 0x34,
+        op::SWP,
         //op::IPOP,
         op::HALT,
     ];
