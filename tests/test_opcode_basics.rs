@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod test_opcode_basics {
     use flint::vm::runner::*;
-    use flint::vm::opcodes::op;
-
+    use flint::vm::opcodes::*;
+    use flint::bytecode;
 
     #[test]
     fn test_nop() {
-        let code = vec![op::NOP, op::NOP, op::HALT];
+        let code = bytecode!(NOP, NOP, HALT);
         let mut vm = VirtualMachine::new(code);
         
         vm.execute();
@@ -18,7 +18,7 @@ mod test_opcode_basics {
     #[test]
     fn test_halt_stops_execution() {
         
-        let code = vec![op::HALT, op::IPUSH, 0, 0, 0, 100];
+        let code = bytecode!(HALT, IPUSH  100);
         let mut vm = VirtualMachine::new(code);
         
         vm.execute();
@@ -28,12 +28,14 @@ mod test_opcode_basics {
 
     #[test]
     fn test_ipush_pushes_integer(){
-        let code = vec![op::IPUSH, 0,0,0,120, 
-                        op::IPUSH, 0,0,0x02,0x1b, //539
-                        op::IPUSH, 0,0x45,0x2b,0x5c, //4533084
-                        op::IPUSH, 0x7f,0xff,0xff,0xff,//2147483647
-                        op::IPUSH, 0x80,0x00,0x00,0x00,//-2147483648
-                        op::HALT];
+        let code = bytecode!(
+            IPUSH 120,
+            IPUSH 539,
+            IPUSH 4533084,
+            IPUSH 2147483647,  // Max i32
+            IPUSH -2147483648, // Min i32
+            HALT
+        );
         let mut vm = VirtualMachine::new(code);
         vm.execute();
 
@@ -49,12 +51,12 @@ mod test_opcode_basics {
 
     #[test]
     fn test_ipop_removes_top_of_stack() {
-        let code = vec![
-            op::IPUSH, 0, 0, 0, 100, 
-            op::IPUSH, 0, 0, 0, 200, 
-            op::IPOP, 
-            op::HALT
-        ];
+        let code = bytecode!(
+            IPUSH 100,
+            IPUSH 200,
+            IPOP,
+            HALT
+        );
         let mut vm = VirtualMachine::new(code);
         
         vm.execute();
@@ -65,12 +67,12 @@ mod test_opcode_basics {
 
     #[test]
     fn test_bipush_pushes_single_byte() {
-        let code = vec![
-            op::BIPUSH, 10, 
-            op::BIPUSH, 127, 
-            op::BIPUSH, 255, 
-            op::HALT
-        ];
+        let code = bytecode!(
+            BIPUSH 10, 
+            BIPUSH 127, 
+            BIPUSH 255, 
+            HALT
+        );
         let mut vm = VirtualMachine::new(code);
         
         vm.execute();
@@ -83,12 +85,12 @@ mod test_opcode_basics {
 
     #[test]
     fn test_swp_swaps_top_two_values() {
-        let code = vec![
-            op::BIPUSH, 10,
-            op::BIPUSH, 20,
-            op::SWP,
-            op::HALT
-        ];
+        let code = bytecode!(
+            BIPUSH 10,
+            BIPUSH 20,
+            SWP,
+            HALT
+        );
         let mut vm = VirtualMachine::new(code);
         
         vm.execute();
@@ -98,11 +100,11 @@ mod test_opcode_basics {
 
     #[test]
     fn test_dup_duplicates_top_value() {
-        let code = vec![
-            op::BIPUSH, 42,
-            op::DUP,
-            op::HALT
-        ];
+        let code = bytecode!(
+            BIPUSH 42,
+            DUP,
+            HALT
+        );
         let mut vm = VirtualMachine::new(code);
         
         vm.execute();
