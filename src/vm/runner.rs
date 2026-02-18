@@ -55,7 +55,8 @@ impl VirtualMachine{
                 op::NOP => continue,
                 op::HALT => break,
                 op::IPUSH => self.handle_ipush(),
-                op::IPOP => self.handle_ipop(),
+                op::FPUSH => self.handle_fpush(),
+                op::POP => self.handle_pop(),
                 op::BIPUSH => self.handle_bipush(),
                 op::SWP => self.handle_swp(),
                 op::DUP => self.handle_dup(),
@@ -85,7 +86,21 @@ impl VirtualMachine{
         self.push(Value::Int(value));
     }
 
-    pub fn handle_ipop(&mut self){
+    pub fn handle_fpush(&mut self) {
+        let start = self.ip;
+        let end = self.ip + 8;
+        let bytes = &self.code[start..end];
+
+        // Convert 8 bytes to f64 (using Big Endian)
+        let value = f64::from_be_bytes(bytes.try_into().expect("Bytecode ended prematurely"));
+
+        // Move the IP forward by 8 bytes
+        self.ip += 8;
+
+        self.push(Value::Float(value));
+    }
+
+    pub fn handle_pop(&mut self){
         self.pop();
     }
 

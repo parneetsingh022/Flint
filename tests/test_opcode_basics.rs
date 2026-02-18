@@ -54,7 +54,7 @@ mod test_opcode_basics {
         let code = bytecode!(
             IPUSH 100,
             IPUSH 200,
-            IPOP,
+            POP,
             HALT
         );
         let mut vm = VirtualMachine::new(code);
@@ -246,6 +246,79 @@ mod test_opcode_basics {
         vm.execute();
 
         assert_eq!(vm.stack[0], Value::Int(4));
+    }
+
+    #[test]
+    fn test_add_mixed_float_int() {
+        // 10.5 + 20 = 30.5
+        let code = bytecode!(
+            FPUSH 10.5, 
+            BIPUSH 20,
+            ADD,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        assert_eq!(vm.stack[0], Value::Float(30.5));
+    }
+
+    #[test]
+    fn test_div_mixed_int_float() {
+        // 10 / 2.5 = 4.0
+        let code = bytecode!(
+            BIPUSH 10,
+            FPUSH 2.5,
+            DIV,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        assert_eq!(vm.stack[0], Value::Float(4.0));
+    }
+
+    #[test]
+    fn test_float_pure_math() {
+        // 5.5 * 2.0 = 11.0
+        let code = bytecode!(
+            FPUSH 5.5,
+            FPUSH 2.0,
+            MUL,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        assert_eq!(vm.stack[0], Value::Float(11.0));
+    }
+
+    #[test]
+    fn test_sub_float_int() {
+        // 10.0 - 5 = 5.0
+        let code = bytecode!(
+            FPUSH 10.0,
+            BIPUSH 5,
+            SUB,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        assert_eq!(vm.stack[0], Value::Float(5.0));
+    }
+
+    #[test]
+    #[should_panic(expected = "Runtime Error: Division by zero")]
+    fn test_float_div_by_zero() {
+        let code = bytecode!(
+            FPUSH 10.0,
+            FPUSH 0.0,
+            DIV,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
     }
 
 }
