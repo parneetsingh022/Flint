@@ -48,7 +48,7 @@ impl VirtualMachine{
     /// Executes the virtual machine
     pub fn execute(&mut self){
         let mut cur_op : u8;
-        while (self.ip < self.code.len()){
+        while self.ip < self.code.len(){
             cur_op = self.fetch();
 
             match cur_op {
