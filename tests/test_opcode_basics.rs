@@ -150,4 +150,24 @@ mod test_opcode_basics {
         assert_eq!(vm.stack[0], Value::Int(30));
     }
 
+    #[test]
+    fn test_sub_integers() {
+        let code = bytecode!(
+            BIPUSH 10,
+            BIPUSH 20,
+            SUB,
+            BIPUSH 35,
+            BIPUSH 10,
+            SUB,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        
+        vm.execute();
+
+        assert_eq!(vm.stack.len(), 2);
+        assert_eq!(vm.stack[0], Value::Int(-10));
+        assert_eq!(vm.stack[1], Value::Int(25));
+    }
+
 }

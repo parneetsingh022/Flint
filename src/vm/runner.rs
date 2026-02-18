@@ -61,6 +61,7 @@ impl VirtualMachine{
                 op::DUP => self.handle_dup(),
                 op::NEG => self.handle_neg(),
                 op::ADD => self.handle_add(),
+                op::SUB => self.handle_sub(),
                 _ => panic!("Unknown opcode: {}", cur_op),
             }
         }
@@ -102,6 +103,18 @@ impl VirtualMachine{
         self.push(a);
     }
 
+    pub fn handle_neg(&mut self){
+        let a = self.pop();
+
+        let result = match a  {
+            Value::Int(v1) => Value::Int(-v1),
+            Value::Float(v1) => Value::Float(-v1),
+            _ => panic!("Type error: Negation only supported for integers and float"),
+        };
+
+        self.push(result);
+    }
+
     pub fn handle_add(&mut self){
         let a = self.pop();
         let b = self.pop();
@@ -117,17 +130,21 @@ impl VirtualMachine{
         self.push(result);
     }
 
-    pub fn handle_neg(&mut self){
+    pub fn handle_sub(&mut self){
         let a = self.pop();
+        let b = self.pop();
 
-        let result = match a  {
-            Value::Int(v1) => Value::Int(-v1),
-            Value::Float(v1) => Value::Float(-v1),
-            _ => panic!("Type error: Negation only supported for integers and float"),
+        let result = match(a,b) {
+            (Value::Int(v1) , Value::Int(v2)) => Value::Int(v2 - v1),
+            (Value::Float(v1) , Value::Float(v2)) => Value::Float(v2 - v1),
+            (Value::Int(v1), Value::Float(v2)) => Value::Float(v2 - v1 as f64),
+            (Value::Float(v1), Value::Int(v2)) => Value::Float(v2 as f64 - v1),
+            _ => panic!("Type error: Subtraction only supported for integers and float"),
         };
 
         self.push(result);
     }
+    
 }
 
 

@@ -49,7 +49,8 @@ opcodes! {
     SWP,    // 5
     DUP,    // 6
     NEG,    // 7
-    ADD     // 8
+    ADD,    // 8
+    SUB
 }
 
 #[macro_export]

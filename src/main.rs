@@ -6,16 +6,19 @@ use crate::vm::disassembler::disassemble_bytecode;
 
 fn main() {
     let code = bytecode!(
-        IPUSH 100,
-        BIPUSH 34,
-        IPUSH 394,
-        NOP,
-        ADD
+        IPUSH 5,
+        IPUSH 10,
+        SUB,
+        HALT
     );
 
+    let mut vm = VirtualMachine::new(code);
+    vm.execute();
+
+    println!("{:?}", vm.stack);
     
-    let dis = disassemble_bytecode(code);
-    println!("{}",dis);
+    // let dis = disassemble_bytecode(code);
+    // println!("{}",dis);
 
     
 }
