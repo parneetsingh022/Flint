@@ -170,4 +170,82 @@ mod test_opcode_basics {
         assert_eq!(vm.stack[1], Value::Int(25));
     }
 
+
+    #[test]
+    fn test_mul_integers() {
+        let code = bytecode!(
+            BIPUSH 6,
+            BIPUSH 7,
+            MUL,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        assert_eq!(vm.stack.len(), 1);
+        assert_eq!(vm.stack[0], Value::Int(42));
+    }
+
+    #[test]
+    fn test_div_integers() {
+        let code = bytecode!(
+            BIPUSH 100,
+            BIPUSH 25,
+            DIV,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        assert_eq!(vm.stack.len(), 1);
+        assert_eq!(vm.stack[0], Value::Int(4));
+    }
+
+    #[test]
+    fn test_mod_integers() {
+        let code = bytecode!(
+            BIPUSH 10,
+            BIPUSH 3,
+            MOD,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        assert_eq!(vm.stack.len(), 1);
+        assert_eq!(vm.stack[0], Value::Int(1));
+    }
+
+    #[test]
+    #[should_panic(expected = "Runtime Error: Division by zero")]
+    fn test_div_by_zero() {
+        let code = bytecode!(
+            BIPUSH 10,
+            BIPUSH 0,
+            DIV,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+    }
+
+    #[test]
+    fn test_complex_math_stack() {
+        // (10 * 2) / (10 - 5) = 4
+        let code = bytecode!(
+            BIPUSH 10,
+            BIPUSH 2,
+            MUL,    // Stack: [20]
+            BIPUSH 10,
+            BIPUSH 5,
+            SUB,    // Stack: [20, 5]
+            DIV,    // Stack: [4]
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        assert_eq!(vm.stack[0], Value::Int(4));
+    }
+
 }

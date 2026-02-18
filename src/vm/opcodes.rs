@@ -50,7 +50,10 @@ opcodes! {
     DUP,    // 6
     NEG,    // 7
     ADD,    // 8
-    SUB
+    SUB,
+    MUL,
+    DIV,
+    MOD
 }
 
 #[macro_export]

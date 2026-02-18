@@ -62,6 +62,9 @@ impl VirtualMachine{
                 op::NEG => self.handle_neg(),
                 op::ADD => self.handle_add(),
                 op::SUB => self.handle_sub(),
+                op::MUL => self.handle_mul(),
+                op::DIV => self.handle_div(),
+                op::MOD => self.handle_mod(),
                 _ => panic!("Unknown opcode: {}", cur_op),
             }
         }
@@ -142,6 +145,71 @@ impl VirtualMachine{
             _ => panic!("Type error: Subtraction only supported for integers and float"),
         };
 
+        self.push(result);
+    }
+
+    pub fn handle_mul(&mut self) {
+        let (b, a) = (self.pop(), self.pop());
+        let result = match (a, b) {
+            (Value::Int(v1), Value::Int(v2)) => Value::Int(v1 * v2),
+            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 * v2),
+            (Value::Int(v1), Value::Float(v2)) => Value::Float(v1 as f64 * v2),
+            (Value::Float(v1), Value::Int(v2)) => Value::Float(v1 * v2 as f64),
+            _ => panic!("Type error: Multiplication only supported for numeric types"),
+        };
+        self.push(result);
+    }
+
+    pub fn handle_div(&mut self) {
+        let b = self.pop();
+        let a = self.pop();
+
+        let result = match (a, b) {
+            (Value::Int(v1), Value::Int(v2)) => {
+                if v2 == 0 { panic!("Runtime Error: Division by zero"); }
+                Value::Int(v1 / v2)
+            }
+            (Value::Float(v1), Value::Float(v2)) => {
+                if v2 == 0.0 { panic!("Runtime Error: Division by zero"); }
+                Value::Float(v1 / v2)
+            }
+            (Value::Int(v1), Value::Float(v2)) => {
+                if v2 == 0.0 { panic!("Runtime Error: Division by zero"); }
+                Value::Float(v1 as f64 / v2)
+            }
+            (Value::Float(v1), Value::Int(v2)) => {
+                if v2 == 0 { panic!("Runtime Error: Division by zero"); }
+                Value::Float(v1 / v2 as f64)
+            }
+            _ => panic!("Type error: Division only supported for numeric types"),
+        };
+        self.push(result);
+    }
+
+    pub fn handle_mod(&mut self) {
+        let b = self.pop();
+        let a = self.pop();
+
+        let result = match (a, b) {
+            (Value::Int(v1), Value::Int(v2)) => {
+                if v2 == 0 { panic!("Runtime Error: Integer modulo by zero"); }
+                Value::Int(v1 % v2)
+            }
+            (Value::Float(v1), Value::Float(v2)) => {
+                if v2 == 0.0 { panic!("Runtime Error: Float modulo by zero"); }
+                Value::Float(v1 % v2)
+            }
+            (Value::Int(v1), Value::Float(v2)) => {
+                if v2 == 0.0 { panic!("Runtime Error: Float modulo by zero"); }
+                Value::Float(v1 as f64 % v2)
+            }
+            (Value::Float(v1), Value::Int(v2)) => {
+                if v2 == 0 { panic!("Runtime Error: Integer modulo by zero"); }
+                Value::Float(v1 % v2 as f64)
+            }
+
+            _ => panic!("Type error: Modulo only supported for numeric types"),
+        };
         self.push(result);
     }
     
