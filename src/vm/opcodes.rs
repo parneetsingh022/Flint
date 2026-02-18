@@ -1,14 +1,55 @@
+macro_rules! define_opcodes {
+    // This part handles the recursion to assign numbers
+    (@count $asm:ident, $output:ident, $ip:ident, $bytecode:ident, $val:expr, ) => {};
+    
+    ($($name:ident),*) => {
+        pub mod op {
+            // Internal trick to generate incrementing constants
+            $(pub const $name: u8 = define_opcodes!(@inner $name);)*
+            
+            // Generate the lookup function
+            pub fn get_name(code: u8) -> &'static str {
+                let mut i = 0;
+                $(
+                    if code == i { return stringify!($name); }
+                    i += 1;
+                )*
+                "UNKNOWN"
+            }
+        }
+    };
+}
 
-pub mod op {
-    pub const NOP      : u8   = 0;
-    pub const HALT     : u8   = 1;
-    pub const IPUSH    : u8   = 2;
-    pub const IPOP     : u8   = 3;
-    pub const BIPUSH   : u8   = 4;  // PUSH a single byte as integer
-    pub const SWP      : u8   = 5;
-    pub const DUP      : u8   = 6;
-    pub const NEG      : u8   = 7;
-    pub const ADD      : u8   = 8;
+
+macro_rules! opcodes {
+    ($($name:ident),*) => {
+        pub mod op {
+            $(pub const $name: u8 = op_enum::$name as u8;)*
+
+            #[repr(u8)]
+            #[derive(Debug)]
+            enum op_enum {
+                $($name,)*
+            }
+
+            pub fn get_name(code: u8) -> &'static str {
+                $(if code == op_enum::$name as u8 { return stringify!($name); })*
+                "UNKNOWN"
+            }
+        }
+    }
+}
+
+opcodes! {
+    NOP,    // 0
+    HALT,   // 1
+    IPUSH,  // 2
+    IPOP,   // 3
+    BIPUSH, // 4
+    SWP,    // 5
+    DUP,    // 6
+    NEG,    // 7
+    ADD     // 8
 }
 
 #[macro_export]
