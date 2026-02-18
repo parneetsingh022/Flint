@@ -8,3 +8,35 @@ pub mod op {
     pub const SWP      : u8   = 5;
     pub const DUP      : u8   = 6;
 }
+
+#[macro_export]
+macro_rules! bytecode {
+    // 1. Handle IPUSH (takes one i32 argument)
+    (IPUSH $val:expr $(, $($rest:tt)*)?) => {{
+        let mut v = Vec::new();
+        v.push(op::IPUSH);
+        v.extend(&($val as i32).to_be_bytes());
+        $( v.extend(bytecode!($($rest)*)); )?
+        v
+    }};
+
+    // 2. Handle BIPUSH (takes one u8 argument)
+    (BIPUSH $val:expr $(, $($rest:tt)*)?) => {{
+        let mut v = Vec::new();
+        v.push(op::BIPUSH);
+        v.push($val as u8);
+        $( v.extend(bytecode!($($rest)*)); )?
+        v
+    }};
+
+    // 3. Handle instructions with no arguments (HALT, NOP, SWP, DUP, IPOP)
+    ($op:ident $(, $($rest:tt)*)?) => {{
+        let mut v = Vec::new();
+        v.push(op::$op);
+        $( v.extend(bytecode!($($rest)*)); )?
+        v
+    }};
+
+    // 4. Base case: nothing left
+    () => { Vec::new() };
+}
