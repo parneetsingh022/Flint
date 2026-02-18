@@ -59,6 +59,7 @@ impl VirtualMachine{
                 op::BIPUSH => self.handle_bipush(),
                 op::SWP => self.handle_swp(),
                 op::DUP => self.handle_dup(),
+                op::ADD => self.handle_add(),
                 _ => panic!("Unknown opcode: {}", cur_op),
             }
         }
@@ -98,6 +99,18 @@ impl VirtualMachine{
         let a = self.pop();
         self.push(a);
         self.push(a);
+    }
+
+    pub fn handle_add(&mut self){
+        let a = self.pop();
+        let b = self.pop();
+
+        let result = match(a,b) {
+            (Value::Int(v1) , Value::Int(v2)) => Value::Int(v1+v2),
+            _ => panic!("Type error: Addition only supported for integers"),
+        };
+
+        self.push(result);
     }
 }
 

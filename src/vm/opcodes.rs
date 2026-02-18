@@ -7,6 +7,7 @@ pub mod op {
     pub const BIPUSH   : u8   = 4;  // PUSH a single byte as integer
     pub const SWP      : u8   = 5;
     pub const DUP      : u8   = 6;
+    pub const ADD      : u8   = 7;
 }
 
 #[macro_export]

@@ -6,8 +6,9 @@ use crate::vm::runner::VirtualMachine;
 fn main() {
     let code = bytecode!(
         NOP, 
-        BIPUSH 10,  // 0x0a
-        BIPUSH 52,  // 0x34
+        BIPUSH 10,
+        BIPUSH 52,
+        ADD,
         SWP,
         HALT
     );
