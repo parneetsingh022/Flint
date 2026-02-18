@@ -66,6 +66,7 @@ impl VirtualMachine{
                 op::MUL => self.handle_mul(),
                 op::DIV => self.handle_div(),
                 op::MOD => self.handle_mod(),
+                op::CMP => self.handle_cmp(),
                 _ => panic!("Unknown opcode: {}", cur_op),
             }
         }
@@ -226,6 +227,43 @@ impl VirtualMachine{
             _ => panic!("Type error: Modulo only supported for numeric types"),
         };
         self.push(result);
+    }
+
+    pub fn handle_cmp(&mut self) {
+        let b = self.pop();
+        let a = self.pop();
+
+        let res = match (a, b) {
+            // Integer vs Integer
+            (Value::Int(v1), Value::Int(v2)) => {
+                if v1 < v2 { -1 } else if v1 > v2 { 1 } else { 0 }
+            }
+            // Float vs Float
+            (Value::Float(v1), Value::Float(v2)) => self.compare_f64(v1, v2),
+            // Mixed: Int vs Float
+            (Value::Int(v1), Value::Float(v2)) => self.compare_f64(v1 as f64, v2),
+            // Mixed: Float vs Int
+            (Value::Float(v1), Value::Int(v2)) => self.compare_f64(v1, v2 as f64),
+            
+            _ => panic!("Type error: CMP only supported for numeric types"),
+        };
+
+        self.push(Value::Int(res));
+    }
+
+    // Helper to handle the float logic (including NaN)
+    fn compare_f64(&self, v1: f64, v2: f64) -> i32 {
+        if v1 < v2 {
+            -1
+        } else if v1 > v2 {
+            1
+        } else if v1 == v2 {
+            0
+        } else {
+            // This happens if v1 or v2 is NaN
+            // We return -2 to signal "Unordered/Error"
+            -2 
+        }
     }
     
 }

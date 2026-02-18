@@ -57,9 +57,9 @@ opcodes! {
     SUB,
     MUL,
     DIV,
-    MOD
+    MOD,
 
-    
+    CMP
 }
 
 #[macro_export]

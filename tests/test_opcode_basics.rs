@@ -321,4 +321,63 @@ mod test_opcode_basics {
         vm.execute();
     }
 
+
+    #[test]
+    fn test_cmp_integers() {
+        // Test Less Than (10 < 20) -> -1
+        let code_lt = bytecode!(BIPUSH 10, BIPUSH 20, CMP, HALT);
+        let mut vm_lt = VirtualMachine::new(code_lt);
+        vm_lt.execute();
+        assert_eq!(vm_lt.stack[0], Value::Int(-1));
+
+        // Test Equal (15 == 15) -> 0
+        let code_eq = bytecode!(BIPUSH 15, BIPUSH 15, CMP, HALT);
+        let mut vm_eq = VirtualMachine::new(code_eq);
+        vm_eq.execute();
+        assert_eq!(vm_eq.stack[0], Value::Int(0));
+
+        // Test Greater Than (30 > 10) -> 1
+        let code_gt = bytecode!(BIPUSH 30, BIPUSH 10, CMP, HALT);
+        let mut vm_gt = VirtualMachine::new(code_gt);
+        vm_gt.execute();
+        assert_eq!(vm_gt.stack[0], Value::Int(1));
+    }
+
+    #[test]
+    fn test_cmp_mixed_types() {
+        // Float < Int (5.5 < 10) -> -1
+        let code_mixed = bytecode!(FPUSH 5.5, BIPUSH 10, CMP, HALT);
+        let mut vm = VirtualMachine::new(code_mixed);
+        vm.execute();
+        assert_eq!(vm.stack[0], Value::Int(-1));
+    }
+
+    #[test]
+    fn test_cmp_with_neg_opcode() {
+        // Test: -5 > -10  => Result: 1
+        // Logic: 5, NEG, 10, NEG, CMP
+        let code = bytecode!(
+            BIPUSH 5, 
+            NEG,        // Stack: [-5]
+            BIPUSH 10, 
+            NEG,        // Stack: [-5, -10]
+            CMP,        // Compare -5 and -10
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        // -5 is indeed greater than -10
+        assert_eq!(vm.stack[0], Value::Int(1));
+    }
+
+    #[test]
+    fn test_cmp_floats_equality() {
+        // Float equality (0.5 == 0.5) -> 0
+        let code_f_eq = bytecode!(FPUSH 0.5, FPUSH 0.5, CMP, HALT);
+        let mut vm_f = VirtualMachine::new(code_f_eq);
+        vm_f.execute();
+        assert_eq!(vm_f.stack[0], Value::Int(0));
+    }
+
 }
