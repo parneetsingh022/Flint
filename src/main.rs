@@ -8,9 +8,10 @@ use std::env;
 fn main() {
     let code = bytecode!(
         IPUSH 5,
+        JMP 0x0f,
         IPUSH -1,
-        JE 5,
-        HALT
+        HALT,
+        IPUSH 309
     );
 
     let args: Vec<String> = env::args().collect();

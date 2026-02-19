@@ -362,12 +362,7 @@ impl VirtualMachine{
 
     pub fn handle_jmp(&mut self) {
         let address = read_bytes!(self, u32);
-
-        if let Value::Int(cmp_result) = self.pop() {
-            self.ip = address as usize;
-        } else {
-            panic!("Type error: JGE expects an integer on the stack from a CMP operation");
-        }
+        self.ip = address as usize;
     }
 
 }
