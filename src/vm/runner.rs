@@ -55,12 +55,18 @@ impl VirtualMachine{
                 op::NOP => continue,
                 op::HALT => break,
                 op::IPUSH => self.handle_ipush(),
-                op::IPOP => self.handle_ipop(),
+                op::FPUSH => self.handle_fpush(),
+                op::POP => self.handle_pop(),
                 op::BIPUSH => self.handle_bipush(),
                 op::SWP => self.handle_swp(),
                 op::DUP => self.handle_dup(),
                 op::NEG => self.handle_neg(),
                 op::ADD => self.handle_add(),
+                op::SUB => self.handle_sub(),
+                op::MUL => self.handle_mul(),
+                op::DIV => self.handle_div(),
+                op::MOD => self.handle_mod(),
+                op::CMP => self.handle_cmp(),
                 _ => panic!("Unknown opcode: {}", cur_op),
             }
         }
@@ -81,7 +87,21 @@ impl VirtualMachine{
         self.push(Value::Int(value));
     }
 
-    pub fn handle_ipop(&mut self){
+    pub fn handle_fpush(&mut self) {
+        let start = self.ip;
+        let end = self.ip + 8;
+        let bytes = &self.code[start..end];
+
+        // Convert 8 bytes to f64 (using Big Endian)
+        let value = f64::from_be_bytes(bytes.try_into().expect("Bytecode ended prematurely"));
+
+        // Move the IP forward by 8 bytes
+        self.ip += 8;
+
+        self.push(Value::Float(value));
+    }
+
+    pub fn handle_pop(&mut self){
         self.pop();
     }
 
@@ -102,6 +122,18 @@ impl VirtualMachine{
         self.push(a);
     }
 
+    pub fn handle_neg(&mut self){
+        let a = self.pop();
+
+        let result = match a  {
+            Value::Int(v1) => Value::Int(-v1),
+            Value::Float(v1) => Value::Float(-v1),
+            _ => panic!("Type error: Negation only supported for integers and float"),
+        };
+
+        self.push(result);
+    }
+
     pub fn handle_add(&mut self){
         let a = self.pop();
         let b = self.pop();
@@ -117,17 +149,123 @@ impl VirtualMachine{
         self.push(result);
     }
 
-    pub fn handle_neg(&mut self){
+    pub fn handle_sub(&mut self){
         let a = self.pop();
+        let b = self.pop();
 
-        let result = match a  {
-            Value::Int(v1) => Value::Int(-v1),
-            Value::Float(v1) => Value::Float(-v1),
-            _ => panic!("Type error: Negation only supported for integers and float"),
+        let result = match(a,b) {
+            (Value::Int(v1) , Value::Int(v2)) => Value::Int(v2 - v1),
+            (Value::Float(v1) , Value::Float(v2)) => Value::Float(v2 - v1),
+            (Value::Int(v1), Value::Float(v2)) => Value::Float(v2 - v1 as f64),
+            (Value::Float(v1), Value::Int(v2)) => Value::Float(v2 as f64 - v1),
+            _ => panic!("Type error: Subtraction only supported for integers and float"),
         };
 
         self.push(result);
     }
+
+    pub fn handle_mul(&mut self) {
+        let (b, a) = (self.pop(), self.pop());
+        let result = match (a, b) {
+            (Value::Int(v1), Value::Int(v2)) => Value::Int(v1 * v2),
+            (Value::Float(v1), Value::Float(v2)) => Value::Float(v1 * v2),
+            (Value::Int(v1), Value::Float(v2)) => Value::Float(v1 as f64 * v2),
+            (Value::Float(v1), Value::Int(v2)) => Value::Float(v1 * v2 as f64),
+            _ => panic!("Type error: Multiplication only supported for numeric types"),
+        };
+        self.push(result);
+    }
+
+    pub fn handle_div(&mut self) {
+        let b = self.pop();
+        let a = self.pop();
+
+        let result = match (a, b) {
+            (Value::Int(v1), Value::Int(v2)) => {
+                if v2 == 0 { panic!("Runtime Error: Division by zero"); }
+                Value::Int(v1 / v2)
+            }
+            (Value::Float(v1), Value::Float(v2)) => {
+                if v2 == 0.0 { panic!("Runtime Error: Division by zero"); }
+                Value::Float(v1 / v2)
+            }
+            (Value::Int(v1), Value::Float(v2)) => {
+                if v2 == 0.0 { panic!("Runtime Error: Division by zero"); }
+                Value::Float(v1 as f64 / v2)
+            }
+            (Value::Float(v1), Value::Int(v2)) => {
+                if v2 == 0 { panic!("Runtime Error: Division by zero"); }
+                Value::Float(v1 / v2 as f64)
+            }
+            _ => panic!("Type error: Division only supported for numeric types"),
+        };
+        self.push(result);
+    }
+
+    pub fn handle_mod(&mut self) {
+        let b = self.pop();
+        let a = self.pop();
+
+        let result = match (a, b) {
+            (Value::Int(v1), Value::Int(v2)) => {
+                if v2 == 0 { panic!("Runtime Error: Integer modulo by zero"); }
+                Value::Int(v1 % v2)
+            }
+            (Value::Float(v1), Value::Float(v2)) => {
+                if v2 == 0.0 { panic!("Runtime Error: Float modulo by zero"); }
+                Value::Float(v1 % v2)
+            }
+            (Value::Int(v1), Value::Float(v2)) => {
+                if v2 == 0.0 { panic!("Runtime Error: Float modulo by zero"); }
+                Value::Float(v1 as f64 % v2)
+            }
+            (Value::Float(v1), Value::Int(v2)) => {
+                if v2 == 0 { panic!("Runtime Error: Integer modulo by zero"); }
+                Value::Float(v1 % v2 as f64)
+            }
+
+            _ => panic!("Type error: Modulo only supported for numeric types"),
+        };
+        self.push(result);
+    }
+
+    pub fn handle_cmp(&mut self) {
+        let b = self.pop();
+        let a = self.pop();
+
+        let res = match (a, b) {
+            // Integer vs Integer
+            (Value::Int(v1), Value::Int(v2)) => {
+                if v1 < v2 { -1 } else if v1 > v2 { 1 } else { 0 }
+            }
+            // Float vs Float
+            (Value::Float(v1), Value::Float(v2)) => self.compare_f64(v1, v2),
+            // Mixed: Int vs Float
+            (Value::Int(v1), Value::Float(v2)) => self.compare_f64(v1 as f64, v2),
+            // Mixed: Float vs Int
+            (Value::Float(v1), Value::Int(v2)) => self.compare_f64(v1, v2 as f64),
+            
+            _ => panic!("Type error: CMP only supported for numeric types"),
+        };
+
+        self.push(Value::Int(res));
+    }
+
+    // Helper to handle the float logic (including NaN)
+    fn compare_f64(&self, v1: f64, v2: f64) -> i32 {
+        if v1 < v2 {
+            -1
+        } else if v1 > v2 {
+            1
+        } else if v1 == v2 {
+            0
+        } else {
+            // This happens if v1 or v2 is NaN
+            // We return -2 to signal "Unordered/Error"
+            -2 
+        }
+    }
+    
 }
 
 

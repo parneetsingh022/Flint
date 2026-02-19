@@ -41,38 +41,57 @@ macro_rules! opcodes {
 }
 
 opcodes! {
-    NOP,    // 0
-    HALT,   // 1
-    IPUSH,  // 2
-    IPOP,   // 3
-    BIPUSH, // 4
-    SWP,    // 5
-    DUP,    // 6
-    NEG,    // 7
-    ADD     // 8
+    NOP,
+    HALT,
+
+    IPUSH,
+    BIPUSH,
+    FPUSH,
+    POP,
+
+    SWP,
+    DUP,
+
+    NEG,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+
+    CMP
 }
 
 #[macro_export]
 macro_rules! bytecode {
-    // 1. Handle IPUSH (takes one i32 argument)
+    // Handle FPUSH (takes one f64 argument, 8 bytes)
+    (FPUSH $val:expr $(, $($rest:tt)*)?) => {{
+        let mut v = Vec::new();
+        v.push(op::FPUSH);
+        v.extend(&(($val) as f64).to_be_bytes());
+        $( v.extend(bytecode!($($rest)*)); )?
+        v
+    }};
+
+    // Handle IPUSH (takes one i32 argument, 4 bytes)
     (IPUSH $val:expr $(, $($rest:tt)*)?) => {{
         let mut v = Vec::new();
         v.push(op::IPUSH);
-        v.extend(&($val as i32).to_be_bytes());
+        v.extend(&(($val) as i32).to_be_bytes());
         $( v.extend(bytecode!($($rest)*)); )?
         v
     }};
 
-    // 2. Handle BIPUSH (takes one u8 argument)
+    // Handle BIPUSH (takes one u8 argument, 1 byte)
     (BIPUSH $val:expr $(, $($rest:tt)*)?) => {{
         let mut v = Vec::new();
         v.push(op::BIPUSH);
-        v.push($val as u8);
+        v.push(($val) as u8);
         $( v.extend(bytecode!($($rest)*)); )?
         v
     }};
 
-    // 3. Handle instructions with no arguments (HALT, NOP, SWP, DUP, IPOP)
+    // Handle instructions with no arguments
     ($op:ident $(, $($rest:tt)*)?) => {{
         let mut v = Vec::new();
         v.push(op::$op);
@@ -80,6 +99,5 @@ macro_rules! bytecode {
         v
     }};
 
-    // 4. Base case: nothing left
     () => { Vec::new() };
 }
