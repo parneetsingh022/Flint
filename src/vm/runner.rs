@@ -1,5 +1,19 @@
 use crate::vm::opcodes::op;
 
+macro_rules! read_bytes {
+    ($self:ident, $ty:ty) => {{
+        let size = std::mem::size_of::<$ty>();
+        let start = $self.ip;
+        let end = $self.ip + size;
+        
+        let bytes = &$self.code[start..end];
+        let value = <$ty>::from_be_bytes(bytes.try_into().expect("Bytecode ended prematurely"));
+        
+        $self.ip += size; // Automatically advance the instruction pointer
+        value
+    }};
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Value{
     Int(i32),
@@ -45,6 +59,20 @@ impl VirtualMachine{
         self.stack.pop().expect("Stack underflow!")
     }
 
+    fn compare_f64(&self, v1: f64, v2: f64) -> i32 {
+        if v1 < v2 {
+            -1
+        } else if v1 > v2 {
+            1
+        } else if v1 == v2 {
+            0
+        } else {
+            // This happens if v1 or v2 is NaN
+            // We return -2 to signal "Unordered/Error"
+            -2 
+        }
+    }
+
     /// Executes the virtual machine
     pub fn execute(&mut self){
         let mut cur_op : u8;
@@ -53,7 +81,7 @@ impl VirtualMachine{
 
             match cur_op {
                 op::NOP => continue,
-                op::HALT => break,
+                op::HALT => {break},
                 op::IPUSH => self.handle_ipush(),
                 op::FPUSH => self.handle_fpush(),
                 op::POP => self.handle_pop(),
@@ -67,6 +95,13 @@ impl VirtualMachine{
                 op::DIV => self.handle_div(),
                 op::MOD => self.handle_mod(),
                 op::CMP => self.handle_cmp(),
+                op::JL  => self.handle_jl(),
+                op::JLE  => self.handle_jle(),
+                op::JG  => self.handle_jg(),
+                op::JGE  => self.handle_jge(),
+                op::JE  => self.handle_je(),
+                op::JNE  => self.handle_jne(),
+                op::JMP  => self.handle_jmp(),
                 _ => panic!("Unknown opcode: {}", cur_op),
             }
         }
@@ -251,21 +286,90 @@ impl VirtualMachine{
         self.push(Value::Int(res));
     }
 
-    // Helper to handle the float logic (including NaN)
-    fn compare_f64(&self, v1: f64, v2: f64) -> i32 {
-        if v1 < v2 {
-            -1
-        } else if v1 > v2 {
-            1
-        } else if v1 == v2 {
-            0
+    pub fn handle_jl(&mut self) {
+        let address = read_bytes!(self, u32);
+
+        if let Value::Int(cmp_result) = self.pop() {
+            if cmp_result == -1 {
+                self.ip = address as usize;
+            }
         } else {
-            // This happens if v1 or v2 is NaN
-            // We return -2 to signal "Unordered/Error"
-            -2 
+            panic!("Type error: JL expects an integer on the stack from a CMP operation");
         }
     }
-    
+
+
+    pub fn handle_jle(&mut self) {
+        let address = read_bytes!(self, u32);
+
+        if let Value::Int(cmp_result) = self.pop() {
+            if cmp_result == -1 || cmp_result == 0 {
+                self.ip = address as usize;
+            }
+        } else {
+            panic!("Type error: JLE expects an integer on the stack from a CMP operation");
+        }
+    }
+
+    pub fn handle_jg(&mut self) {
+        let address = read_bytes!(self, u32);
+
+        if let Value::Int(cmp_result) = self.pop() {
+            if cmp_result == 1 {
+                self.ip = address as usize;
+            }
+        } else {
+            panic!("Type error: JG expects an integer on the stack from a CMP operation");
+        }
+    }
+
+
+    pub fn handle_jge(&mut self) {
+        let address = read_bytes!(self, u32);
+
+        if let Value::Int(cmp_result) = self.pop() {
+            if cmp_result == 1 || cmp_result == 0 {
+                self.ip = address as usize;
+            }
+        } else {
+            panic!("Type error: JGE expects an integer on the stack from a CMP operation");
+        }
+    }
+
+    pub fn handle_je(&mut self) {
+        let address = read_bytes!(self, u32);
+
+        if let Value::Int(cmp_result) = self.pop() {
+            if cmp_result == 0  {
+                self.ip = address as usize;
+            }
+        } else {
+            panic!("Type error: JE expects an integer on the stack from a CMP operation");
+        }
+    }
+
+    pub fn handle_jne(&mut self) {
+        let address = read_bytes!(self, u32);
+
+        if let Value::Int(cmp_result) = self.pop() {
+            if cmp_result != 0  {
+                self.ip = address as usize;
+            }
+        } else {
+            panic!("Type error: JNE expects an integer on the stack from a CMP operation");
+        }
+    }
+
+    pub fn handle_jmp(&mut self) {
+        let address = read_bytes!(self, u32);
+
+        if let Value::Int(cmp_result) = self.pop() {
+            self.ip = address as usize;
+        } else {
+            panic!("Type error: JGE expects an integer on the stack from a CMP operation");
+        }
+    }
+
 }
 
 
