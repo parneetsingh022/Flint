@@ -7,11 +7,21 @@ use std::env;
 
 fn main() {
     let code = bytecode!(
-        IPUSH 5,
-        JMP 0x0f,
-        IPUSH -1,
-        HALT,
-        IPUSH 309
+        BIPUSH 0,
+
+        DUP,
+        
+        BIPUSH 255,
+        CMP,
+        JGE 0x14,
+        
+        DUP,
+        BIPUSH 1,
+        ADD,
+        
+        JMP 2,
+        
+        HALT
     );
 
     let args: Vec<String> = env::args().collect();
