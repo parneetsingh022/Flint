@@ -3,26 +3,23 @@ mod vm;
 use crate::vm::opcodes::op;
 use crate::vm::runner::VirtualMachine;
 use crate::vm::disassembler::disassemble_bytecode;
+use crate::vm::assembler::Assembler;
 use std::env; 
 
 fn main() {
-    let code = bytecode!(
-        BIPUSH 0,
 
-        DUP,
-        
-        BIPUSH 255,
-        CMP,
-        JGE 0x14,
-        
-        DUP,
-        BIPUSH 1,
-        ADD,
-        
-        JMP 2,
-        
-        HALT
-    );
+    let mut assembler = Assembler::new();
+
+    let source = "
+        BIPUSH 1    ; Counter 
+    ";
+
+    let code = assembler.assemble(source);
+    let mut vm = VirtualMachine::new(code.clone());
+    vm.execute();
+
+    // Results in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    println!("{:?}", vm.stack);
 
     let args: Vec<String> = env::args().collect();
     

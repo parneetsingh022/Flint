@@ -72,7 +72,7 @@ impl VirtualMachine{
             -2 
         }
     }
-
+    
     /// Executes the virtual machine
     pub fn execute(&mut self){
         let mut cur_op : u8;
