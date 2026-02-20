@@ -46,7 +46,7 @@ impl Assembler {
             match mnemonic.as_str() {
                 // No-argument instructions
                 "HALT" => bytecode.push(op::HALT),
-                "NEG"  => bytecode.push(op::ADD),
+                "NEG"  => bytecode.push(op::NEG),
                 "ADD"  => bytecode.push(op::ADD),
                 "SUB"  => bytecode.push(op::SUB),
                 "MUL"  => bytecode.push(op::MUL),
@@ -56,6 +56,7 @@ impl Assembler {
                 "DUP"  => bytecode.push(op::DUP),
                 "POP"  => bytecode.push(op::POP),
                 "SWP"  => bytecode.push(op::SWP),
+                "PRINT"  => bytecode.push(op::PRINT),
 
                 // 1-byte argument (u8)
                 "BIPUSH" => {
@@ -64,10 +65,17 @@ impl Assembler {
                 }
 
                 // 4-byte argument (i32/u32)
-                "IPUSH" => {
+                "IPUSH"  => {
                     bytecode.push(op::IPUSH);
                     let val = line[op_idx + 1].parse::<i32>().unwrap();
                     bytecode.extend(&(val as u32).to_be_bytes());
+                }
+
+                "LOAD" | "STORE" => {
+                    let opcode = if mnemonic == "LOAD" { op::LOAD } else { op::STORE };
+                    bytecode.push(opcode);
+                    let addr = line[op_idx + 1].parse::<u32>().unwrap();
+                    bytecode.extend(&addr.to_be_bytes());
                 }
 
                 // Control Flow (Labels)
@@ -93,14 +101,14 @@ impl Assembler {
             // --- 1 Byte (Opcode only) ---
             "NOP" | "HALT" | "POP" | "SWP" | "DUP" | 
             "NEG" | "ADD" | "SUB" | "MUL" | "DIV" | 
-            "MOD" | "CMP" => 1,
+            "MOD" | "CMP" | "PRINT"=> 1,
 
             // --- 2 Bytes (Opcode + u8) ---
             "BIPUSH" => 2,
 
             // --- 5 Bytes (Opcode + 32-bit value/address) ---
             "IPUSH" | "JL" | "JLE" | "JG" | "JGE" | 
-            "JE" | "JNE" | "JMP" => 5,
+            "JE" | "JNE" | "JMP" | "LOAD" | "STORE" => 5,
 
             // --- 9 Bytes (Opcode + 64-bit float) ---
             "FPUSH" => 9,

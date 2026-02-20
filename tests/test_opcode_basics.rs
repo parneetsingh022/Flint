@@ -380,4 +380,22 @@ mod test_opcode_basics {
         assert_eq!(vm_f.stack[0], Value::Int(0));
     }
 
+
+    #[test]
+    fn test_neg_mixed_float_int() {
+        // 10.5 + 20 = 30.5
+        let code = bytecode!(
+            FPUSH 10.5,
+            NEG,
+            BIPUSH 20,
+            NEG,
+            HALT
+        );
+        let mut vm = VirtualMachine::new(code);
+        vm.execute();
+
+        assert_eq!(vm.stack[0], Value::Float(-10.5));
+        assert_eq!(vm.stack[1], Value::Int(-20));
+    }
+
 }

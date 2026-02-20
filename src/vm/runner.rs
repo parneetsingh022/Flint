@@ -25,8 +25,9 @@ pub struct VirtualMachine{
     pub code       : Vec<u8>,
     pub ip         : usize,
     pub stack      : Vec<Value>,
-    pub locals     : Vec<Value>,
-    pub constants  : Vec<Value>
+    pub memory     : Vec<Value>,
+    pub constants  : Vec<Value>,
+    pub running    : bool
 }
 
 impl VirtualMachine{
@@ -35,8 +36,9 @@ impl VirtualMachine{
             code,
             ip: 0,
             stack:  Vec::with_capacity(1024),
-            locals: Vec::new(),
+            memory: Vec::new(),
             constants: Vec::new(),
+            running: true
         }
     }
 
@@ -76,12 +78,12 @@ impl VirtualMachine{
     /// Executes the virtual machine
     pub fn execute(&mut self){
         let mut cur_op : u8;
-        while self.ip < self.code.len(){
+        while self.ip < self.code.len() && self.running {
             cur_op = self.fetch();
 
             match cur_op {
                 op::NOP => continue,
-                op::HALT => {break},
+                op::HALT => {self.running = false},
                 op::IPUSH => self.handle_ipush(),
                 op::FPUSH => self.handle_fpush(),
                 op::POP => self.handle_pop(),
@@ -102,6 +104,9 @@ impl VirtualMachine{
                 op::JE  => self.handle_je(),
                 op::JNE  => self.handle_jne(),
                 op::JMP  => self.handle_jmp(),
+                op::STORE => self.handle_store(),
+                op::LOAD => self.handle_load(),
+                op::PRINT => self.handle_print(),
                 _ => panic!("Unknown opcode: {}", cur_op),
             }
         }
@@ -363,6 +368,44 @@ impl VirtualMachine{
     pub fn handle_jmp(&mut self) {
         let address = read_bytes!(self, u32);
         self.ip = address as usize;
+    }
+
+    pub fn handle_store(&mut self) {
+        let address = read_bytes!(self, u32) as usize;
+
+        if let Some(value) = self.stack.pop() {
+            if address >= self.memory.len() {
+                self.memory.resize(address + 1, Value::Int(0));
+            }
+            self.memory[address] = value;
+        } else {
+            panic!("Runtime Error: Stack underflow during STORE");
+        }
+    }
+
+
+    pub fn handle_load(&mut self) {
+        let address = read_bytes!(self, u32) as usize;
+        if address < self.memory.len() {
+            let value = self.memory[address];
+            self.stack.push(value);
+        } else {
+            eprintln!("Runtime Error: Access to uninitialized or out-of-bounds address: {}", address);
+            self.running = false;
+        }
+    }
+
+    pub fn handle_print(&mut self) {
+        let item = self.pop();
+        
+        match item {
+            Value::Int(val) => {
+                println!("{}", val);
+            }
+            Value::Float(val) => {
+                println!("{:.2}", val); 
+            }
+        }
     }
 
 }

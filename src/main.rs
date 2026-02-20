@@ -10,36 +10,87 @@ fn main() {
 
     let mut assembler = Assembler::new();
 
+    // for (int i = 0; i < 10; i++){
+    //     System.out.println(i);
+    // }
+
     let source = "
         _start:
-            BIPUSH 2    ; Counter 
-        even_loop:
-            DUP
-            IPUSH 2
-            MOD
-            IPUSH 0
+            BIPUSH 2
+            STORE  0     ; (i)
+
+        for_i_0_10:
+            LOAD   0
+            BIPUSH 40
             CMP
-            JNE odd
-        even:
-            DUP
-        odd:
-            IPUSH 1
-            ADD
-            ; check if we reached item 10
-            DUP
-            IPUSH 10
-            CMP
-            JGE end
-            JMP even_loop
-        
-        end:
+            jl loop_body
+            jmp end_for_i_0_10
+            loop_body:
+                BIPUSH 1  ; True for prime
+                STORE  2
+                ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+                BIPUSH 2
+                STORE  1     ; (j)
+
+                for2_i_0_10:
+                    LOAD   1
+                    LOAD   0
+                    BIPUSH 1
+                    SUB
+                    CMP
+                    jl loop2_body
+                    jmp end_for2_i_0_10
+                    loop2_body:
+                        ;###############
+                        LOAD 0
+                        LOAD 1
+                        MOD
+                        BIPUSH 0
+                        CMP
+                        jne prime
+                            BIPUSH 0
+                            STORE  2
+                            JMP end_for2_i_0_10
+                        prime:
+                        ;###############
+
+                    incr_for2_i_0_10:
+                        LOAD 1
+                        BIPUSH 1
+                        ADD
+                        STORE 1
+                        jmp for2_i_0_10
+
+                end_for2_i_0_10:
+                    LOAD 2
+                    BIPUSH 1
+                    CMP
+                    jne incr_for_i_0_10
+
+                    LOAD 0
+                    PRINT
+
+                ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+            incr_for_i_0_10:
+                LOAD 0
+                BIPUSH 1
+                ADD
+                STORE 0
+                jmp for_i_0_10
+
+        end_for_i_0_10:
+            
+
+
+
+        _end:
             HALT
     ";
 
 
     let code = assembler.assemble(source);
-    let mut vm = VirtualMachine::new(code.clone());
-    vm.execute();
 
 
     let args: Vec<String> = env::args().collect();
@@ -64,6 +115,6 @@ fn main() {
         let mut vm = VirtualMachine::new(code);
         vm.execute();
 
-        println!("--- VM STACK ---\n{:?}", vm.stack);
+        println!("--- VM STACK ---\n{:?}\n\n--- VM MEMORY ---\n{:?}\n", vm.stack, vm.memory);
     }
 }
