@@ -59,12 +59,22 @@ opcodes! {
     DIV,
     MOD,
 
-    CMP
+    CMP,
+
+    // 32 Bit Absolute Jumps
+    JL,
+    JLE,
+    JG,
+    JGE,
+    JE,
+    JNE,
+    JMP
+
 }
 
 #[macro_export]
 macro_rules! bytecode {
-    // Handle FPUSH (takes one f64 argument, 8 bytes)
+    // Specific overrides for non-4-byte instructions
     (FPUSH $val:expr $(, $($rest:tt)*)?) => {{
         let mut v = Vec::new();
         v.push(op::FPUSH);
@@ -73,16 +83,6 @@ macro_rules! bytecode {
         v
     }};
 
-    // Handle IPUSH (takes one i32 argument, 4 bytes)
-    (IPUSH $val:expr $(, $($rest:tt)*)?) => {{
-        let mut v = Vec::new();
-        v.push(op::IPUSH);
-        v.extend(&(($val) as i32).to_be_bytes());
-        $( v.extend(bytecode!($($rest)*)); )?
-        v
-    }};
-
-    // Handle BIPUSH (takes one u8 argument, 1 byte)
     (BIPUSH $val:expr $(, $($rest:tt)*)?) => {{
         let mut v = Vec::new();
         v.push(op::BIPUSH);
@@ -91,7 +91,25 @@ macro_rules! bytecode {
         v
     }};
 
-    // Handle instructions with no arguments
+    // Dispatchers for 4-byte instructions
+    (IPUSH $v:expr $(, $($r:tt)*)?) => { bytecode!(@four IPUSH, $v, $(, $($r)*)?) };
+    (JL $v:expr $(, $($r:tt)*)?)    => { bytecode!(@four JL, $v, $(, $($r)*)?) };
+    (JLE $v:expr $(, $($r:tt)*)?)   => { bytecode!(@four JLE, $v, $(, $($r)*)?) };
+    (JG $v:expr $(, $($r:tt)*)?)    => { bytecode!(@four JG, $v, $(, $($r)*)?) };
+    (JGE $v:expr $(, $($r:tt)*)?)   => { bytecode!(@four JGE, $v, $(, $($r)*)?) };
+    (JE $v:expr $(, $($r:tt)*)?)    => { bytecode!(@four JE, $v, $(, $($r)*)?) };
+    (JNE $v:expr $(, $($r:tt)*)?)   => { bytecode!(@four JNE, $v, $(, $($r)*)?) };
+    (JMP $v:expr $(, $($r:tt)*)?)   => { bytecode!(@four JMP, $v, $(, $($r)*)?) };
+
+    (@four $op:ident, $val:expr, $(, $($rest:tt)*)?) => {{
+        let mut v = Vec::new();
+        v.push(op::$op);
+        v.extend(&(($val as i32) as u32).to_be_bytes());
+        $( v.extend(bytecode!($($rest)*)); )?
+        v
+    }};
+
+    // Instructions with no arguments (HALT, POP, etc.)
     ($op:ident $(, $($rest:tt)*)?) => {{
         let mut v = Vec::new();
         v.push(op::$op);
