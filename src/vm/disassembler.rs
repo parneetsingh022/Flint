@@ -20,9 +20,9 @@ pub fn disassemble_bytecode(bytecode: Vec<u8>) -> String {
             }
             
             // Opcode with 32-Bit Operand (Unsigned)
-            op::JL | op::JG | op::JLE | op::JGE | op::JE | op::JNE | op::JMP  => {
+            op::JL | op::JG | op::JLE | op::JGE | op::JE | op::JNE | op::JMP | op::LOAD | op::STORE  => {
                 let val = u32::from_be_bytes(bytecode[ip+1..ip+5].try_into().unwrap());
-                asm.push_str(&format!("{} {:<10} {}\n", prefix, name, val));
+                asm.push_str(&format!("{} {:<10} {} (0x{:02X})\n", prefix, name, val, val));
                 ip += 5; 
             }
     

@@ -49,6 +49,10 @@ opcodes! {
     FPUSH,
     POP,
 
+    // 32 bit address
+    STORE,
+    LOAD,
+
     SWP,
     DUP,
 
@@ -68,7 +72,9 @@ opcodes! {
     JGE,
     JE,
     JNE,
-    JMP
+    JMP,
+
+    PRINT
 
 }
 
