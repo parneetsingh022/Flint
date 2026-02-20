@@ -46,10 +46,16 @@ impl Assembler {
             match mnemonic.as_str() {
                 // No-argument instructions
                 "HALT" => bytecode.push(op::HALT),
+                "NEG"  => bytecode.push(op::ADD),
                 "ADD"  => bytecode.push(op::ADD),
+                "SUB"  => bytecode.push(op::SUB),
+                "MUL"  => bytecode.push(op::MUL),
+                "DIV"  => bytecode.push(op::DIV),
+                "MOD"  => bytecode.push(op::MOD),
                 "CMP"  => bytecode.push(op::CMP),
                 "DUP"  => bytecode.push(op::DUP),
                 "POP"  => bytecode.push(op::POP),
+                "SWP"  => bytecode.push(op::SWP),
 
                 // 1-byte argument (u8)
                 "BIPUSH" => {
