@@ -6,7 +6,7 @@ pub fn disassemble_bytecode(bytecode: Vec<u8>) -> String {
 
     while ip < bytecode.len() {
         let cur = bytecode[ip]; // This IS your single byte opcode
-        let name = op::get_name(cur);
+        let name = op::get_info(cur).unwrap().name;
         
         // Standard Prefix for every instruction
         let prefix = format!("{:04X}: {:02X}", ip, cur);
