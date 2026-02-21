@@ -1,11 +1,14 @@
 use crate::vm::opcodes::op;
+use crate::vm::header::Header;
 
-pub fn disassemble_bytecode(bytecode: Vec<u8>) -> String {
-    let mut ip = 0;
+pub fn disassemble_bytecode(binary: Vec<u8>) -> Result<String, String> {
+    
     let mut asm = String::new();
-
-    while ip < bytecode.len() {
-        let cur = bytecode[ip];
+    let header = Header::from_bytes(&binary)?;
+    
+    let mut ip = (header.size as usize) + 1;
+    while ip <= header.data_start as usize {
+        let cur = binary[ip];
         
         // Retrieve metadata from our centralized opcode definition
         let info = match op::get_info(cur) {
@@ -28,13 +31,13 @@ pub fn disassemble_bytecode(bytecode: Vec<u8>) -> String {
             }
             2 => {
                 // 1-byte argument (e.g., BIPUSH)
-                let val = bytecode[ip + 1];
+                let val = binary[ip + 1];
                 asm.push_str(&format!("{} {:<10} {}\n", prefix, name, val as i8));
                 ip += 2;
             }
             5 => {
                 // 4-byte argument (e.g., IPUSH, JMP, LOAD, STORE)
-                let bytes = &bytecode[ip + 1..ip + 5];
+                let bytes = &binary[ip + 1..ip + 5];
                 let val = u32::from_be_bytes(bytes.try_into().unwrap());
                 
                 if cur == op::IPUSH {
@@ -48,7 +51,7 @@ pub fn disassemble_bytecode(bytecode: Vec<u8>) -> String {
             }
             9 => {
                 // 8-byte argument (e.g., FPUSH)
-                let bytes = &bytecode[ip + 1..ip + 9];
+                let bytes = &binary[ip + 1..ip + 9];
                 let val = f64::from_be_bytes(bytes.try_into().unwrap());
                 asm.push_str(&format!("{} {:<10} {:.4}\n", prefix, name, val));
                 ip += 9;
@@ -59,7 +62,7 @@ pub fn disassemble_bytecode(bytecode: Vec<u8>) -> String {
             }
         }
     }
-    asm
+    Ok(asm)
 }
 
 

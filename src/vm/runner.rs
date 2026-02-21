@@ -1,4 +1,5 @@
 use crate::vm::opcodes::op;
+use crate::vm::header::Header;
 
 macro_rules! read_bytes {
     ($self:ident, $ty:ty) => {{
@@ -35,9 +36,10 @@ pub struct VirtualMachine{
 
 impl VirtualMachine{
     pub fn new(code : Vec<u8>) -> Self{
+        let header = Header::from_bytes(&code).expect("Failed to parse Flint header");
         Self{
             code,
-            ip: 0,
+            ip: (header.code_start as usize)+1,
             stack:  Vec::with_capacity(1024),
             memory: Vec::new(),
             constants: Vec::new(),

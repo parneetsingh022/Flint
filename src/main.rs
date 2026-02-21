@@ -33,8 +33,14 @@ fn main() {
             let bytecode_mode = args.contains(&"--raw".to_string());
 
             if disassemble_mode {
-                let dis = disassemble_bytecode(code);
-                println!("--- DISASSEMBLY (File: {}) ---\n{}", filename, dis);
+                match disassemble_bytecode(code) {
+                    Ok(dis) => {
+                        println!("--- DISASSEMBLY (File: {}) ---\n{}", filename, dis);
+                    }
+                    Err(err) => {
+                        eprintln!("Error disassembling {}: {}", filename, err);
+                    }
+                }
             } else if bytecode_mode {
                 println!("--- Raw Bytecode ---");
                 for chunk in code.chunks(10) {
