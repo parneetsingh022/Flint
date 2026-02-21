@@ -156,7 +156,7 @@ mod test_opcode_conditionals {
             assert!(
                 vm.stack.is_empty(), 
                 "Opcode {} failed to pop the comparison result from the stack", 
-                op::get_name(opcode)
+                op::get_info(opcode).unwrap().name
             );
         }
 

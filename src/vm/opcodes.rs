@@ -1,59 +1,83 @@
 
-macro_rules! opcodes {
-    ($($name:ident),*) => {
+macro_rules! define_instructions {
+    ($(($name:ident, $size:expr)),* $(,)?) => {
         pub mod op {
-            $(pub const $name: u8 = opEnum::$name as u8;)*
+            $(pub const $name: u8 = op_enum::$name as u8;)*
 
             #[repr(u8)]
-            #[derive(Debug)]
-            enum opEnum {
+            #[derive(Debug, Clone, Copy, PartialEq)]
+            enum op_enum {
                 $($name,)*
             }
 
-            pub fn get_name(code: u8) -> &'static str {
-                $(if code == opEnum::$name as u8 { return stringify!($name); })*
-                "UNKNOWN"
+            pub struct InstructionInfo {
+                pub name: &'static str,
+                pub size: u32,
+            }
+
+            pub fn get_info(code: u8) -> Option<InstructionInfo> {
+                $(
+                    if code == op_enum::$name as u8 {
+                        return Some(InstructionInfo {
+                            name: stringify!($name),
+                            size: $size,
+                        });
+                    }
+                )*
+                None
+            }
+
+            pub fn from_mnemonic(m: &str) -> Option<u8> {
+                $(
+                    if stringify!($name) == m.to_uppercase() {
+                        return Some(op_enum::$name as u8);
+                    }
+                )*
+                None
             }
         }
     }
 }
 
-opcodes! {
-    NOP,
-    HALT,
+define_instructions! {
+    // Basic Control
+    (NOP,    1),
+    (HALT,   1),
 
-    IPUSH,
-    BIPUSH,
-    FPUSH,
-    POP,
+    // Stack Operations & Constants
+    (IPUSH,  5), // Opcode + 4-byte i32
+    (BIPUSH, 2), // Opcode + 1-byte u8
+    (FPUSH,  9), // Opcode + 8-byte f64
+    (POP,    1),
+    (SWP,    1),
+    (DUP,    1),
 
-    // 32 bit address
-    STORE,
-    LOAD,
+    // Memory Operations
+    (STORE,  5), // Opcode + 4-byte address
+    (LOAD,   5), // Opcode + 4-byte address
 
-    SWP,
-    DUP,
+    // Arithmetic
+    (NEG,    1),
+    (ADD,    1),
+    (SUB,    1),
+    (MUL,    1),
+    (DIV,    1),
+    (MOD,    1),
 
-    NEG,
-    ADD,
-    SUB,
-    MUL,
-    DIV,
-    MOD,
+    // Comparison
+    (CMP,    1),
 
-    CMP,
+    // Control Flow (32-bit Absolute Jumps)
+    (JL,     5),
+    (JLE,    5),
+    (JG,     5),
+    (JGE,    5),
+    (JE,     5),
+    (JNE,    5),
+    (JMP,    5),
 
-    // 32 Bit Absolute Jumps
-    JL,
-    JLE,
-    JG,
-    JGE,
-    JE,
-    JNE,
-    JMP,
-
-    PRINT
-
+    // I/O
+    (PRINT,  1)
 }
 
 #[macro_export]

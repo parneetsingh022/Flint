@@ -10,29 +10,31 @@ impl Assembler {
         Self { labels: HashMap::new() }
     }
 
-    pub fn assemble(&mut self, input: &str) -> Vec<u8> {
+    pub fn assemble(&mut self, input: &str) -> Result<Vec<u8>, String> {
         let lines: Vec<Vec<&str>> = input
             .lines()
             .map(|l| l.split_whitespace().collect())
-            .filter(|l: &Vec<&str>| !l.is_empty() && !l[0].starts_with(';')) // Ignore empty lines & comments
+            .filter(|l: &Vec<&str>| !l.is_empty() && !l[0].starts_with(';'))
             .collect();
 
         // --- PASS 1: Locate Labels ---
         let mut current_address = 0;
         for line in &lines {
             let first = line[0];
-            if first.ends_with(':') {
+            let op_idx = if first.ends_with(':') {
                 let label_name = first.trim_end_matches(':').to_string();
                 self.labels.insert(label_name, current_address);
-                // If a line is JUST a label, don't increment address
-                if line.len() == 1 { continue; }
-            }
+                1 
+            } else { 
+                0 
+            };
             
-            // Calculate size of the instruction on this line
-            // We assume the opcode is either the first word or the word after the label
-            let op_idx = if first.ends_with(':') { 1 } else { 0 };
             if op_idx < line.len() {
-                current_address += self.get_instruction_size(line[op_idx]);
+                let size = self.get_instruction_size(line[op_idx]);
+                if size == 0 {
+                    return Err(format!("Unknown instruction: {}", line[op_idx]));
+                }
+                current_address += size;
             }
         }
 
@@ -42,78 +44,219 @@ impl Assembler {
             let op_idx = if line[0].ends_with(':') { 1 } else { 0 };
             if op_idx >= line.len() { continue; }
 
-            let mnemonic = line[op_idx].to_uppercase();
-            match mnemonic.as_str() {
-                // No-argument instructions
-                "HALT" => bytecode.push(op::HALT),
-                "NEG"  => bytecode.push(op::NEG),
-                "ADD"  => bytecode.push(op::ADD),
-                "SUB"  => bytecode.push(op::SUB),
-                "MUL"  => bytecode.push(op::MUL),
-                "DIV"  => bytecode.push(op::DIV),
-                "MOD"  => bytecode.push(op::MOD),
-                "CMP"  => bytecode.push(op::CMP),
-                "DUP"  => bytecode.push(op::DUP),
-                "POP"  => bytecode.push(op::POP),
-                "SWP"  => bytecode.push(op::SWP),
-                "PRINT"  => bytecode.push(op::PRINT),
+            let mnemonic = line[op_idx];
+            let opcode = op::from_mnemonic(mnemonic)
+                .ok_or_else(|| format!("Unknown mnemonic: {}", mnemonic))?;
+            
+            let info = op::get_info(opcode).unwrap(); // Safe because from_mnemonic succeeded
+            bytecode.push(opcode);
 
-                // 1-byte argument (u8)
-                "BIPUSH" => {
-                    bytecode.push(op::BIPUSH);
-                    bytecode.push(line[op_idx + 1].parse::<u8>().unwrap());
+            if info.size > 1 {
+                if line.len() <= op_idx + 1 {
+                    return Err(format!("Missing argument for {}", mnemonic));
                 }
-
-                // 4-byte argument (i32/u32)
-                "IPUSH"  => {
-                    bytecode.push(op::IPUSH);
-                    let val = line[op_idx + 1].parse::<i32>().unwrap();
-                    bytecode.extend(&(val as u32).to_be_bytes());
-                }
-
-                "LOAD" | "STORE" => {
-                    let opcode = if mnemonic == "LOAD" { op::LOAD } else { op::STORE };
-                    bytecode.push(opcode);
-                    let addr = line[op_idx + 1].parse::<u32>().unwrap();
-                    bytecode.extend(&addr.to_be_bytes());
-                }
-
-                // Control Flow (Labels)
-                "JMP" | "JE" | "JNE" | "JL" | "JLE" | "JG" | "JGE" => {
-                    let opcode = match mnemonic.as_str() {
-                        "JMP" => op::JMP, "JE" => op::JE, "JNE" => op::JNE,
-                        "JL" => op::JL, "JLE" => op::JLE, "JG" => op::JG,
-                        "JGE" => op::JGE, _ => unreachable!(),
-                    };
-                    bytecode.push(opcode);
-                    let target = line[op_idx + 1];
-                    let addr = *self.labels.get(target).expect("Unknown label");
-                    bytecode.extend(&addr.to_be_bytes());
-                }
-                _ => panic!("Unknown mnemonic: {}", mnemonic),
+                let arg = line[op_idx + 1];
+                self.encode_operand(&mut bytecode, arg, info.size)?;
             }
         }
-        bytecode
+        Ok(bytecode)
     }
 
-    fn get_instruction_size(&self, mnemonic: &str) -> u32 {
-        match mnemonic.to_uppercase().as_str() {
-            // --- 1 Byte (Opcode only) ---
-            "NOP" | "HALT" | "POP" | "SWP" | "DUP" | 
-            "NEG" | "ADD" | "SUB" | "MUL" | "DIV" | 
-            "MOD" | "CMP" | "PRINT"=> 1,
-
-            // --- 2 Bytes (Opcode + u8) ---
-            "BIPUSH" => 2,
-
-            // --- 5 Bytes (Opcode + 32-bit value/address) ---
-            "IPUSH" | "JL" | "JLE" | "JG" | "JGE" | 
-            "JE" | "JNE" | "JMP" | "LOAD" | "STORE" => 5,
-
-            // --- 9 Bytes (Opcode + 64-bit float) ---
-            "FPUSH" => 9,
-
-            _ => 0,
+    fn encode_operand(&self, bytecode: &mut Vec<u8>, arg: &str, size: u32) -> Result<(), String> {
+        match size {
+            2 => { // 1-byte operand (BIPUSH)
+                let val = arg.parse::<u8>().map_err(|_| format!("Invalid u8: {}", arg))?;
+                bytecode.push(val);
+            }
+            5 => { // 4-byte operand (IPUSH, Jumps, Load/Store)
+                let val = if let Some(&addr) = self.labels.get(arg) {
+                    addr
+                } else {
+                    arg.parse::<i32>()
+                        .map(|v| v as u32)
+                        .map_err(|_| format!("Invalid i32 or label: {}", arg))?
+                };
+                bytecode.extend(&val.to_be_bytes());
+            }
+            9 => { // 8-byte operand (FPUSH)
+                let val = arg.parse::<f64>().map_err(|_| format!("Invalid f64: {}", arg))?;
+                bytecode.extend(&val.to_be_bytes());
+            }
+            _ => {}
         }
+        Ok(())
+    }
+
+    pub fn get_instruction_size(&self, mnemonic: &str) -> u32 {
+        op::from_mnemonic(mnemonic)
+            .and_then(|code| op::get_info(code))
+            .map(|info| info.size)
+            .unwrap_or(0)
+    }
+}
+
+
+#[cfg(test)]
+mod test_assembler {
+    use super::*;
+
+    #[test]
+    fn test_assemble_basic_instructions() {
+        let mut assembler = Assembler::new();
+        let input = "
+            BIPUSH 10
+            BIPUSH 20
+            ADD
+            HALT
+        ";
+        
+        // Add .expect() here to get the Vec<u8> out of the Result
+        let bytecode = assembler.assemble(input).expect("Assembly failed");
+        
+        let expected = vec![
+            op::BIPUSH, 10,
+            op::BIPUSH, 20,
+            op::ADD,
+            op::HALT
+        ];
+        
+        assert_eq!(bytecode, expected);
+    }
+
+    #[test]
+    fn test_assemble_labels_and_jumps() {
+        let mut assembler = Assembler::new();
+        let input = "
+            BIPUSH 10
+            loop:
+            BIPUSH 1
+            SUB
+            DUP
+            BIPUSH 0
+            CMP
+            JG loop
+            HALT
+        ";
+        
+        let bytecode = assembler.assemble(input).expect("Assembly failed");
+        
+        assert_eq!(bytecode[0], op::BIPUSH);
+        assert_eq!(bytecode[1], 10);
+        
+        let jg_pos = 9;
+        assert_eq!(bytecode[jg_pos], op::JG);
+        
+        let addr = u32::from_be_bytes([
+            bytecode[jg_pos + 1],
+            bytecode[jg_pos + 2],
+            bytecode[jg_pos + 3],
+            bytecode[jg_pos + 4],
+        ]);
+        assert_eq!(addr, 2);
+    }
+
+    #[test]
+    fn test_assemble_comments_and_whitespace() {
+        let mut assembler = Assembler::new();
+        let input = "
+            ; This is a comment
+            BIPUSH 42    ; Push value
+            
+            HALT         ; Stop
+        ";
+        
+        let bytecode = assembler.assemble(input).expect("Assembly failed");
+        let expected = vec![op::BIPUSH, 42, op::HALT];
+        
+        assert_eq!(bytecode, expected);
+    }
+
+    #[test]
+    fn test_assemble_ipush_large_values() {
+        let mut assembler = Assembler::new();
+        let input = "IPUSH 500000";
+        
+        let bytecode = assembler.assemble(input).expect("Assembly failed");
+        
+        assert_eq!(bytecode[0], op::IPUSH);
+        let val = i32::from_be_bytes([bytecode[1], bytecode[2], bytecode[3], bytecode[4]]);
+        assert_eq!(val, 500000);
+    }
+
+    #[test]
+    fn test_assemble_case_insensitivity() {
+        let mut assembler = Assembler::new();
+        let input = "bipush 10\nAdd\nhalt";
+        
+        let bytecode = assembler.assemble(input).expect("Assembly failed");
+        let expected = vec![op::BIPUSH, 10, op::ADD, op::HALT];
+        
+        assert_eq!(bytecode, expected);
+    }
+    
+    #[test]
+    fn test_assemble_invalid_mnemonic() {
+        let mut assembler = Assembler::new();
+        let result = assembler.assemble("NOT_AN_OPCODE 123");
+        assert!(result.is_err());
+    }
+
+
+    #[test]
+    fn test_assemble_fpush() {
+        let mut assembler = Assembler::new();
+        let input = "FPUSH 123.456";
+        let bytecode = assembler.assemble(input).expect("Assembly failed");
+        
+        assert_eq!(bytecode[0], op::FPUSH);
+        let val = f64::from_be_bytes(bytecode[1..9].try_into().unwrap());
+        assert_eq!(val, 123.456);
+    }
+
+    #[test]
+    fn test_assemble_store_load() {
+        let mut assembler = Assembler::new();
+        let input = "
+            BIPUSH 10
+            STORE 50
+            LOAD 50
+            HALT
+        ";
+        let bytecode = assembler.assemble(input).expect("Assembly failed");
+        
+        // Check STORE at index 2 (after BIPUSH 10)
+        assert_eq!(bytecode[2], op::STORE);
+        let addr = u32::from_be_bytes([bytecode[3], bytecode[4], bytecode[5], bytecode[6]]);
+        assert_eq!(addr, 50);
+    }
+
+    #[test]
+    fn test_assemble_label_only_line() {
+        let mut assembler = Assembler::new();
+        let input = "
+            start:
+            ; This label should point to address 0
+            HALT
+        ";
+        let bytecode = assembler.assemble(input).expect("Assembly failed");
+        
+        // If the label-only line worked, HALT should be at index 0
+        assert_eq!(bytecode[0], op::HALT);
+    }
+
+    #[test]
+    fn test_assemble_forward_jump() {
+        let mut assembler = Assembler::new();
+        let input = "
+            JMP target
+            BIPUSH 99
+            target:
+            HALT
+        ";
+        let bytecode = assembler.assemble(input).expect("Assembly failed");
+        
+        // JMP is at 0, target is at 7 (5 bytes for JMP + 2 bytes for BIPUSH)
+        let addr = u32::from_be_bytes([bytecode[1], bytecode[2], bytecode[3], bytecode[4]]);
+        assert_eq!(addr, 7);
     }
 }
