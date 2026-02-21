@@ -1,4 +1,5 @@
 use crate::vm::opcodes::op;
+use crate::vm::header::Header;
 use std::collections::HashMap;
 
 pub struct Assembler {
@@ -9,6 +10,8 @@ impl Assembler {
     pub fn new() -> Self {
         Self { labels: HashMap::new() }
     }
+
+    
 
     pub fn assemble(&mut self, input: &str) -> Result<Vec<u8>, String> {
         let lines: Vec<Vec<&str>> = input
@@ -30,36 +33,88 @@ impl Assembler {
             };
             
             if op_idx < line.len() {
-                let size = self.get_instruction_size(line[op_idx]);
+                let mnemonic = line[op_idx];
+                
+                // Directives that don't increase the address counter
+                if mnemonic == ".text" || mnemonic == ".data" {
+                    continue; 
+                }
+
+                let mut size = self.get_instruction_size(mnemonic);
+
                 if size == 0 {
-                    return Err(format!("Unknown instruction: {}", line[op_idx]));
+                    if mnemonic == ".ascii" {
+                        // Reconstruct the string from the line (in case there were spaces inside the quotes)
+                        let full_line = line[op_idx+1..].join(" ");
+                        let content = full_line.trim().trim_matches('"');
+                        size = content.len() as u32 + 1;
+                    } else {
+                        return Err(format!("Unknown instruction: {}", mnemonic));
+                    }
                 }
                 current_address += size;
             }
         }
 
         // --- PASS 2: Generate Bytes ---
-        let mut bytecode = Vec::new();
+        let mut header = Header::new();
+
+        let mut text_section = Vec::new();
+        let mut data_section = Vec::new();
+
+        let mut is_text_mode = true;
+        
         for line in &lines {
             let op_idx = if line[0].ends_with(':') { 1 } else { 0 };
             if op_idx >= line.len() { continue; }
+
+            let mnemonic = line[op_idx];
+            match mnemonic {
+                ".text" => { is_text_mode = true; continue; }
+                ".data" => { is_text_mode = false; continue; }
+                ".ascii" => {
+                    let full_line = line[op_idx + 1..].join(" ");
+                    if let Some(start) = full_line.find('"') {
+                        if let Some(end) = full_line.rfind('"') {
+                            let content = &full_line[start + 1..end];
+                            data_section.extend_from_slice(content.as_bytes());
+                            data_section.push(0);
+                            continue;
+                        }
+                    }
+                    return Err(format!("Malformed .ascii: {}", full_line));
+                }
+                _ => {}
+            }
 
             let mnemonic = line[op_idx];
             let opcode = op::from_mnemonic(mnemonic)
                 .ok_or_else(|| format!("Unknown mnemonic: {}", mnemonic))?;
             
             let info = op::get_info(opcode).unwrap(); // Safe because from_mnemonic succeeded
-            bytecode.push(opcode);
+
+            let target_buf = if is_text_mode { &mut text_section } else { &mut data_section };
+            target_buf.push(opcode);
 
             if info.size > 1 {
                 if line.len() <= op_idx + 1 {
                     return Err(format!("Missing argument for {}", mnemonic));
                 }
                 let arg = line[op_idx + 1];
-                self.encode_operand(&mut bytecode, arg, info.size)?;
+                self.encode_operand(target_buf, arg, info.size)?;
             }
         }
-        Ok(bytecode)
+        let mut header = Header::new();
+        let header_bytes = 13; // Size of your Header struct serialized
+        
+        header.code_start = header_bytes;
+        header.data_start = header_bytes + text_section.len() as u32;
+
+        let mut final_binary = header.to_bytes();
+        final_binary.extend(text_section);
+        final_binary.extend(data_section);
+
+        Ok(final_binary)
     }
 
     fn encode_operand(&self, bytecode: &mut Vec<u8>, arg: &str, size: u32) -> Result<(), String> {
