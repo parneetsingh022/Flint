@@ -1,120 +1,57 @@
 mod vm;
 
-use crate::vm::opcodes::op;
 use crate::vm::runner::VirtualMachine;
 use crate::vm::disassembler::disassemble_bytecode;
 use crate::vm::assembler::Assembler;
-use std::env; 
+use std::env;
+use std::fs;
+use std::process;
 
 fn main() {
-
-    let mut assembler = Assembler::new();
-
-    // for (int i = 0; i < 10; i++){
-    //     System.out.println(i);
-    // }
-
-    let source = "
-        _start:
-            BIPUSH 2
-            STORE  0     ; (i)
-
-        for_i_0_10:
-            LOAD   0
-            BIPUSH 40
-            CMP
-            jl loop_body
-            jmp end_for_i_0_10
-            loop_body:
-                BIPUSH 1  ; True for prime
-                STORE  2
-                ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-                BIPUSH 2
-                STORE  1     ; (j)
-
-                for2_i_0_10:
-                    LOAD   1
-                    LOAD   0
-                    BIPUSH 1
-                    SUB
-                    CMP
-                    jl loop2_body
-                    jmp end_for2_i_0_10
-                    loop2_body:
-                        ;###############
-                        LOAD 0
-                        LOAD 1
-                        MOD
-                        BIPUSH 0
-                        CMP
-                        jne prime
-                            BIPUSH 0
-                            STORE  2
-                            JMP end_for2_i_0_10
-                        prime:
-                        ;###############
-
-                    incr_for2_i_0_10:
-                        LOAD 1
-                        BIPUSH 1
-                        ADD
-                        STORE 1
-                        jmp for2_i_0_10
-
-                end_for2_i_0_10:
-                    LOAD 2
-                    BIPUSH 1
-                    CMP
-                    jne incr_for_i_0_10
-
-                    LOAD 0
-                    PRINT
-
-                ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-            incr_for_i_0_10:
-                LOAD 0
-                BIPUSH 1
-                ADD
-                STORE 0
-                jmp for_i_0_10
-
-        end_for_i_0_10:
-            
-
-
-
-        _end:
-            HALT
-    ";
-
-
-    let code = assembler.assemble(source);
-
-
     let args: Vec<String> = env::args().collect();
-    
+
+    // 1. Check for the filename argument
+    if args.len() < 2 {
+        eprintln!("Usage: flint <filename> [options]");
+        eprintln!("Options: -d, --dis    Disassemble the code");
+        eprintln!("         --raw        Print raw bytecode");
+        process::exit(1);
+    }
+
+    let filename = &args[1];
+
+    // Read the source file
+    let source = fs::read_to_string(filename).unwrap_or_else(|err| {
+        eprintln!("Error reading file '{}': {}", filename, err);
+        process::exit(1);
+    });
+
+    // Assemble the string from the file
+    let mut assembler = Assembler::new();
+    let code = assembler.assemble(&source);
+
+    // Handle flags
     let disassemble_mode = args.contains(&"--dis".to_string()) || args.contains(&"-d".to_string());
-    let bytecode_mode = args.contains(&"--raw".to_string()) || args.contains(&"-d".to_string());
+    let bytecode_mode = args.contains(&"--raw".to_string());
 
     if disassemble_mode {
         let dis = disassemble_bytecode(code);
-        println!("--- DISASSEMBLY ---\n{}", dis);
-    } else if bytecode_mode{
+        println!("--- DISASSEMBLY (File: {}) ---\n{}", filename, dis);
+    } else if bytecode_mode {
         println!("--- Raw Bytecode ---");
-
         for chunk in code.chunks(10) {
             for byte in chunk {
                 print!("{:02X} ", byte);
             }
             println!();
         }
-    }else {
+    } else {
         // Run the VM normally
         let mut vm = VirtualMachine::new(code);
         vm.execute();
 
-        println!("--- VM STACK ---\n{:?}\n\n--- VM MEMORY ---\n{:?}\n", vm.stack, vm.memory);
+        println!("\n--- VM STATE ---");
+        println!("Stack:  {:?}", vm.stack);
+        println!("Memory: {:?}", vm.memory);
     }
 }

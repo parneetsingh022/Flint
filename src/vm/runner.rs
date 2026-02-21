@@ -14,10 +14,13 @@ macro_rules! read_bytes {
     }};
 }
 
+
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Value{
     Int(i32),
-    Float(f64)
+    Float(f64),
+    Char(u8),
 }
 
 
@@ -404,6 +407,9 @@ impl VirtualMachine{
             }
             Value::Float(val) => {
                 println!("{:.2}", val); 
+            }
+            Value::Char(c) => {
+                println!("{}", c as char);
             }
         }
     }
